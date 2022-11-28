@@ -1,0 +1,245 @@
+******************************************************************************
+* HW 6: UM
+* Comp 40 Fall 2022
+* 11/22/22
+* README
+* Authors: Adrien Lynch (jlynch07) & Silas Reed (sreed05)
+******************************************************************************
+
+
+Acknowledgements:
+
+        - Thank you to the TAs for helping us work through our design 
+          approach, as well as for just generally guiding us in our
+          understanding of the problem!
+
+
+***************************************
+What's Been Done Correctly:
+
+        - To our knowledge, all aspects of the UM emulator have been 
+          implemented correctly.. this includes the processing of a given 
+          .um file, the storage & manipulation of segments, registers, etc.
+
+
+***************************************
+What Hasn't Been Done Correctly:
+
+        - To our knowledge, we're not yet aware of anything that hasn't
+          been inmplemented correctly.
+
+
+***************************************
+Any Departures From Design:
+
+        - In our original design, we planned to use an array holding a maximum
+          of 2^32 elements to keep track of mapped IDs. However, we quickly 
+          realized that this wasn't practical (lol), so we instead opted to
+          use a Hanson sequence to hold mapped IDs (& pointers to their
+          segments) so that Hanson's abstraction could handle the process of 
+          sizing and reallocating space.
+        - We also added a Hanson sequence holding the respective lengths of 
+          each mapped segment for later use in the Load Program instruction
+
+
+***************************************
+System Architecture: 
+
+        - Data types & tools
+                - C array of uint32_t to hold 8 registers (r0-r7)
+
+                - Program counter of type uint32_t, to track which word we're
+                  looking at in executing segment 0
+
+                - Hanson sequences to hold segment IDs that have been mapped 
+                  (along with their segment's respective lengths), as well as 
+                  unmapped/recycled segments (see Segment module)
+
+                - Stat tool for reading in the file & obtaining total number 
+                  of words in program
+
+                - Bitpacking to process uint32_t words
+
+        - Segment module
+
+                - contains struct Segments for mapped & unmapped IDs, so has
+                  full knowledge of what's been allocated & deallocated
+
+                - initializes segments at start of program
+
+                - responsible for mapping & unmapped/recycling segment IDs, 
+                  but has no knowledge of segment contents (only identifiers)
+
+        - Instructions module
+
+                - works with registers, passed values, & (where applicable) 
+                  segments to update values & segments
+
+                - only has knowledge of current instruction & the data 
+                  structures needed to execute that instruction, cannot view
+                  nor access words/program on a larger scale
+
+                - where applicable, works with Segment module to map & unmap,
+                  or otherwise store & load
+
+                - guided by execution command loop in UM.c
+
+        - UM driver
+
+                - initializes data structures to prepare for program loading,
+                  namely registers and segments
+
+                - has knowledge of .um file being read in, but doesn't have
+                  access to its contents
+
+                - tracks current word in segment, & dictates actions of 
+                  Instructions module based on bitpacked word
+
+                - cannot view program on a larger scale, only has knowledge of
+                  current word being processed
+
+
+***************************************
+Time for UM to execute 50 million instructions: 3.4799 seconds
+
+        - time to execute 10 instructions, 1000 times = 695,980 nanoseconds
+        - 50,000,000 / 10,000 = 5,000
+        - so multiply 5,000 x 695,980
+
+        - 3,479,900,000.000000 nanoseconds = 3.4799 seconds
+        
+        - Note: we found this answer by incorporating the CPUtiming.c,
+          CPUtiming.h, CPUtiming_impl.h files (from HW3 Locality) into 
+          our directory (& our Makefile)
+        - Note (cont.): we then started the timer before entering the 
+          instruction loop, & stopped the timer upon exiting the loop
+        - Note (cont.): we printed this time to stdout, & did calculations
+          above to determine rate of execution
+
+        
+***************************************
+UM Unit Tests: 
+
+        - halt.um
+                - tests functionality of Halt instruction
+                - confirms program terminates with no errors
+                - Note: receives additional testing since it is called 
+                  at the end of every other unit test
+
+        - loadval.um
+                - tests functionality of Load Value instruction
+                - uses for loop to store values in registers, test
+                  printing was done and removed in um.c to confirm
+                  that the correct values had been loaded in
+                - confirms that values wrap after reaching UINT32_MAX
+                - Note: receives additional testing in many other unit tests
+
+        - output.um
+                - tests functionality of Output instruction
+                - confirms that all digits can be printed
+                - originally tested values from 0 to 400 and only printed those
+                  between 0 and 255
+                - Note: receives additional testing in many other unit tests
+
+        - halt-verbose.um
+                - further tests functionality of Halt instruction
+                - calls halt before providing several subsequent instructions,
+                  to check that none have been executed
+
+        - c-move.um
+                - tests functionality of Conditional Move instruction
+                - uses for loop to load & update value in registers, then
+                  moves values around & outputs to confirm success
+
+        - input.um
+                - tests functionality of Input instruction
+                - accepts input & stores in a register, then immediately 
+                  outputs the value in that register, to confirm storage
+                - Note: input & output act as mirrors, thus we've also tested 
+                  them together
+
+        - add.um
+                - tests functionality of Add instruction
+                - loads registers with various values, then calls add 
+                  instruction & outputs result to confirm that the register
+                  has been updated as expected
+
+        - print-six.um
+                - tests functionality of Load Value, Add, Output instructions
+                - engages a simple exercise (from lab) to confirm that basic
+                  instructions are functional
+
+        - multiply.um
+                - tests functionality of Multiply instruction
+                - loads registers with various values, then calls multiply
+                  instruction & outputs results to confirm that the registers
+                  have been updated as expected
+
+        - divide.um
+                - tests functionality of Divide instruction
+                - loads registers with various values, then calls divide
+                  instruction & outputs results to confirm that the registers
+                  have been updated as expected
+                - Note: also checks that an attempt to divide by 0 is met with
+                  error, however this is currently commented out 
+
+        - map-seg.um
+                - tests functionality of Map Segment instruction
+                - loads registers with values, then uses those values to
+                  set lengths for newly-mapped segments, while outputting
+                  register values to confirm storage of words in segments
+
+        - unmap-seg.um
+                - tests functionality of Unmap Segment instruction
+                - loads registers with values, then maps segments with those
+                  values .. segments are later unmapped, and mapped again, to
+                  confirm that unmapped/recycled segment IDs are reused for 
+                  new allocations, namely in context of valgrind
+                - Note: map & unmap act as mirrors, thus we've also tested 
+                  them together
+
+        - seg-store.um
+                - tests functionality of Segmented Store instruction
+                - maps segments & loads values in registers, then calls
+                  segmented store instruction to check that values in segments
+                  & in registers are being updated appropriately
+
+        - seg-load.um
+                - tests functionality of Segmented Load instruction
+                - maps segments & loads registers, while calling segmented 
+                  store & segmented load instructions, to check that values
+                  are being manipulated appropriately
+                - Note: seg store & seg load act somewhat as mirrors, thus 
+                  we've also tested them together
+
+        - loadprogram.um
+                - tests functionality of Load Program instruction
+                - utilizes load value, map segment, seg load, & seg store to 
+                  manipulate values in a given set of segments & registers,
+                  while outputting results to confirm that a new segment has 
+                  successfully replaced the previous segment 0
+
+        - lp-verbose.um
+                - further tests functionality of Load Program instruction
+                - loads an extensive list of values into registers after 
+                  calling load program to further confirm functionality
+
+        - timing.um
+                - executes 10 instructions, 1000 times, before finally 
+                  halting, to give a baseline for the CPU time (nanoseconds)
+                  it takes for UM to execute, as an indicator of performance
+
+
+***************************************
+Hours Spent Analyzing Assignment: 3 hours
+
+
+***************************************
+Hours Spent Preparing Design: 4 hours
+
+
+***************************************
+Hours Spent Solving Problems: 20 hours
+
+
+***************************************
